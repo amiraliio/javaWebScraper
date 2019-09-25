@@ -54,8 +54,12 @@ public final class Scrapper {
 
 
     public Scrapper parse() {
-        if (!this.html.isEmpty()) {
-            if (this.fileName == null || this.fileName.endsWith(".html")) {
+        if (this.html != null && !this.html.isEmpty()) {
+            if (this.fileName == null || this.fileName.endsWith(".html") || this.fileName.endsWith("/")) {
+                if (this.fileName != null && !this.fileName.equals("/") && this.fileName.endsWith("/") && this.html.contains("html")) {
+                    this.fileName = this.fileName.replaceAll("/", "");
+                    this.fileName = this.fileName + ".html";
+                }
                 this.document = Jsoup.parse(this.html);
             }
         }
@@ -63,30 +67,31 @@ public final class Scrapper {
     }
 
 
-    //What =>
-    //How =>
-    //Why =>
     public Scrapper store(String directory) {
         try {
             if (this.fileName == null) {
                 this.fileName = "index.html";
             }
-            if (!this.fileName.endsWith(".html")) {
-                String dir = this.fileName.substring(0, this.fileName.lastIndexOf("/"));
-                String formattedFileName = this.fileName.substring(this.fileName.lastIndexOf("/"));
-                File file = new File(currentDir + "/download" + dir);
-                if (!file.exists()) {
-                    file.setWritable(true);
-                    file.setReadable(true);
-                    file.mkdirs();
+            if (!this.fileName.equals("/") && this.html != null && this.fileName.length() > 1) {
+                if (!this.fileName.endsWith(".html")) {
+                    String dir = this.fileName.substring(0, this.fileName.lastIndexOf("/"));
+                    String formattedFileName = this.fileName.substring(this.fileName.lastIndexOf("/"));
+                    File file = new File(currentDir + "/download" + dir);
+                    if (!file.exists()) {
+                        file.setWritable(true);
+                        file.setReadable(true);
+                        file.mkdirs();
+                    }
+                    FileWriter writer = new FileWriter(currentDir + "/download" + dir + formattedFileName);
+                    writer.write(this.html);
+                    writer.close();
+                } else {
+                    FileWriter writer = new FileWriter(currentDir + "/download/" + this.fileName);
+//                Elements htmlFile = this.document.getAllElements();
+
+                    writer.write(this.document.html());
+                    writer.close();
                 }
-                FileWriter writer = new FileWriter(currentDir + "/download" + dir + formattedFileName);
-                writer.write(this.html);
-                writer.close();
-            } else {
-                FileWriter writer = new FileWriter(currentDir + "/download/" + this.fileName);
-                writer.write(this.document.html());
-                writer.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -98,16 +103,30 @@ public final class Scrapper {
     public void build(boolean recursive) {
         if (recursive) {
             if (this.fileName.endsWith(".html")) {
-                Elements headerJsElements = this.document.head().getElementsByAttributeStarting("src");
-                for (Element headerElement : headerJsElements) {
-                    Scrapper scrapper = init();
-                    scrapper.fileName = headerElement.attributes().get("src");
-                    scrapper.baseURL = "https://golang.org";
-                    scrapper.fetch(this.baseURL + headerElement.attributes().get("src")).parse().store(headerElement.attributes().get("src")).build(true);
+                Elements headerJsElements = this.document.getAllElements();
+                if (!headerJsElements.isEmpty()) {
+                    for (Element headerElement : headerJsElements) {
+                        String js = headerElement.attributes().get("src");
+                        checkTags(js, headerElement, "src");
+                        String href = headerElement.attributes().get("href");
+                        checkTags(href, headerElement, "href");
+                    }
                 }
             }
         }
         System.out.println("Done");
+    }
+
+
+    private void checkTags(String tag, Element headerElement, String fileTag) {
+        if (!tag.isEmpty()) {
+            Scrapper scrapper = init();
+            scrapper.fileName = headerElement.attributes().get(fileTag);
+            if (!scrapper.fileName.startsWith("https") && !scrapper.fileName.startsWith("http")) {
+                scrapper.baseURL = "https://golang.org";
+                scrapper.fetch(scrapper.baseURL + headerElement.attributes().get(fileTag)).parse().store(headerElement.attributes().get(fileTag)).build(true);
+            }
+        }
     }
 
 
