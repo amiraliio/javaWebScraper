@@ -123,7 +123,7 @@ public final class Scrapper {
             Scrapper scrapper = init();
             scrapper.fileName = headerElement.attributes().get(fileTag);
             if (!scrapper.fileName.startsWith("https") && !scrapper.fileName.startsWith("http")) {
-                scrapper.baseURL = "https://golang.org";
+                scrapper.baseURL = "https://wikipedia.org";
                 scrapper.fetch(scrapper.baseURL + headerElement.attributes().get(fileTag)).parse().store(headerElement.attributes().get(fileTag)).build(true);
             }
         }
